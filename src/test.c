@@ -13,7 +13,7 @@
 #define STREAM_DURATION    20.0
 #define STREAM_FRAME_RATE  30
 #define STREAM_PIX_FMT     AV_PIX_FMT_YUV420P
-#define SCALE_FLAGS        SWS_BICUBIC
+#define SCALE_FLAGS        SWS_FAST_BILINEAR
 
 // a wrapper around a single output AVStream
 typedef struct {
