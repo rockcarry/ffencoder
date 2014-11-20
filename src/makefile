@@ -12,6 +12,7 @@ CCFLAGS = -Wall -I$(FFMPEG_INC) -L$(FFMPEG_LIB)
 # 所有的目标文件
 OBJS = \
     log.o \
+    ffencoder.o \
 
 # 所有的可执行目标
 EXES = \
@@ -24,7 +25,7 @@ DLL = ffencoder.dll
 all : $(DLL) $(EXES)
 
 $(DLL) : $(OBJS)
-	$(CC) $(CCFLAGS) -o $@ $(OBJS) --share
+	$(CC) $(CCFLAGS) -o $@ $(OBJS) --share -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lfaac
 
 %.o : %.c %.h stdefine.h
 	$(CC) $(CCFLAGS) -o $@ $< -c
