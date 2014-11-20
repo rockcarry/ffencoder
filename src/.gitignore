@@ -1,4 +1,7 @@
 !.gitignore
+*.o
+*.dll
+*.exe
 *.mp4
 *.log
 
