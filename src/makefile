@@ -7,7 +7,7 @@ FFMPEG_LIB = ../ffmpeglib/lib
 
 # 编译器定义
 CC      = i586-mingw32msvc-gcc
-CCFLAGS = -mwindows -Wall -I$(FFMPEG_INC) -L$(FFMPEG_LIB)
+CCFLAGS = -Wall -I$(FFMPEG_INC) -L$(FFMPEG_LIB)
 
 # 所有的目标文件
 OBJS = \

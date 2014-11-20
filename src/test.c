@@ -445,7 +445,7 @@ static int write_audio_frame(AVFormatContext *oc, OUTSTREAM *ost)
                           ost->frame->data, dst_nb_samples,
                           (const uint8_t **)frame->data, frame->nb_samples);
         if (ret < 0) {
-            fprintf(stderr, "Error while converting\n");
+            log_printf("error while converting\n");
             exit(1);
         }
         frame = ost->frame;
@@ -456,14 +456,14 @@ static int write_audio_frame(AVFormatContext *oc, OUTSTREAM *ost)
 
     ret = avcodec_encode_audio2(c, &pkt, frame, &got_packet);
     if (ret < 0) {
-        fprintf(stderr, "Error encoding audio frame: %s\n", av_err2str(ret));
+        log_printf("error encoding audio frame: %s\n", av_err2str(ret));
         exit(1);
     }
 
     if (got_packet) {
         ret = write_frame(oc, &c->time_base, ost->st, &pkt);
         if (ret < 0) {
-            fprintf(stderr, "Error while writing audio frame: %s\n",
+            log_printf("error while writing audio frame: %s\n",
                     av_err2str(ret));
             exit(1);
         }
@@ -497,7 +497,7 @@ int main(void)
     int              encode_audio = 0;
     int              ret;
 
-    log_init("test.log");
+    log_init("STDOUT");
 
     /* initialize libavcodec, and register all codecs and formats. */
     av_register_all();
@@ -548,7 +548,6 @@ int main(void)
         return 1;
     }
 
-#if 1
     while (encode_video || encode_audio) {
         /* select the stream to encode */
         if (encode_video &&
@@ -559,7 +558,6 @@ int main(void)
             encode_audio = !write_audio_frame(ctxt, &astream);
         }
     }
-#endif
 
     /* write the trailer, if any. The trailer must be written before you
      * close the CodecContexts open when you wrote the header; otherwise

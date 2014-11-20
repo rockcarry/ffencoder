@@ -8,6 +8,8 @@
 #define LOG_MODE_DISABLE  0
 #define LOG_MODE_FILE     1
 #define LOG_MODE_DEBUGER  2
+#define LOG_MODE_STDOUT   3
+#define LOG_MODE_STDERR   4
 
 // 内部全部变量定义
 static FILE *s_log_fp   = NULL;
@@ -20,6 +22,14 @@ void log_init(char *file)
         if (strcmp(file, "DEBUGER") == 0) {
             s_log_mode = LOG_MODE_DEBUGER;
         }
+        else if (strcmp(file, "STDOUT") == 0) {
+            s_log_mode = LOG_MODE_STDOUT;
+            s_log_fp   = stdout;
+        }
+        else if (strcmp(file, "STDERR") == 0) {
+            s_log_mode = LOG_MODE_STDERR;
+            s_log_fp   = stderr;
+        }
         else {
             s_log_fp = fopen(file, "w");
             if (s_log_fp) {
@@ -31,12 +41,13 @@ void log_init(char *file)
 
 void log_done(void)
 {
-    if (s_log_fp) {
+    if (s_log_mode == LOG_MODE_FILE)
+    {
         fflush(s_log_fp);
         fclose(s_log_fp);
-        s_log_fp   = NULL;
-        s_log_mode = 0;
+        s_log_fp = NULL;
     }
+    s_log_mode = LOG_MODE_DISABLE;
 }
 
 #define MAX_LOG_BUF 1024
@@ -52,15 +63,13 @@ void log_printf(char *format, ...)
     vsnprintf(buf, MAX_LOG_BUF, format, valist);
     va_end(valist);
 
-    switch (s_log_mode)
+    if (s_log_mode == LOG_MODE_DEBUGER)
     {
-    case LOG_MODE_FILE:
+        OutputDebugString(buf);
+    }
+    else
+    {
         fputs(buf, s_log_fp);
         fflush(s_log_fp);
-        break;
-
-    case LOG_MODE_DEBUGER:
-        OutputDebugString(buf);
-        break;
     }
 }
