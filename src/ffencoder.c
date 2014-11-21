@@ -38,7 +38,7 @@ typedef struct
 } FFENCODER;
 
 // 内部全局变量定义
-FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
+static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
 {
     "test.mp4",         // filename
     0,                  // audio_disable
