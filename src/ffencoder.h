@@ -24,16 +24,13 @@ typedef struct
     int frame_rate;
     int pixel_fmt;
     int scale_flags;
-
-    void *audio_buf[8];
-    void *video_buf[8];
 } FFENCODER_PARAMS;
 
 // º¯ÊýÉùÃ÷
 void* ffencoder_init (FFENCODER_PARAMS *params);
 void  ffencoder_free (void *ctxt);
-void  ffencoder_audio(void *ctxt);
-void  ffencoder_video(void *ctxt);
+void  ffencoder_audio(void *ctxt, void *data[8], int nbsample   );
+void  ffencoder_video(void *ctxt, void *data[8], int linesize[8]);
 
 #endif
 

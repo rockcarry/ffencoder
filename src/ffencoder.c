@@ -432,10 +432,14 @@ void ffencoder_free(void *ctxt)
     free(encoder);
 }
 
-void ffencoder_audio(void *ctxt)
+void ffencoder_audio(void *ctxt, void *data[8], int nbsample)
 {
+    FFENCODER *encoder = (FFENCODER*)ctxt;
+    if (!ctxt) return;
 }
 
-void ffencoder_video(void *ctxt)
+void ffencoder_video(void *ctxt, void *data[8], int linesize[8])
 {
+    FFENCODER *encoder = (FFENCODER*)ctxt;
+    if (!ctxt) return;
 }
