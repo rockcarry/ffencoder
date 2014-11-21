@@ -14,6 +14,7 @@ typedef struct
     int audio_disable;
     int audio_bitrate;
     int sample_rate;
+    int channel_layout;
 
     // video params
     int video_disable;
@@ -21,16 +22,18 @@ typedef struct
     int video_width;
     int video_height;
     int frame_rate;
-    int pixel_fmt_src;
-    int pixel_fmt_dst;
+    int pixel_fmt;
     int scale_flags;
+
+    void *audio_buf[8];
+    void *video_buf[8];
 } FFENCODER_PARAMS;
 
 // º¯ÊýÉùÃ÷
 void* ffencoder_init (FFENCODER_PARAMS *params);
-void  ffencoder_free (void *encoder);
-void  ffencoder_audio(void *encoder);
-void  ffencoder_video(void *encoder);
+void  ffencoder_free (void *ctxt);
+void  ffencoder_audio(void *ctxt);
+void  ffencoder_video(void *ctxt);
 
 #endif
 

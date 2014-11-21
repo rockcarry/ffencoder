@@ -13,28 +13,27 @@
 // 内部类型定义
 typedef struct
 {
-    AVStream *st;
-    AVFrame  *frame;
-    AVFrame  *tmp_frame;
-
-    int64_t   next_pts;
-    int       samples_count;
+    FFENCODER_PARAMS   params;
 
     struct SwsContext *sws_ctx;
     struct SwrContext *swr_ctx;
-} OUTSTREAM;
 
-typedef struct
-{
-    OUTSTREAM        astream;
-    OUTSTREAM        vstream;
-    AVOutputFormat  *outfmt;
-    AVFormatContext *ofctxt;
-    AVCodec         *acodec;
-    AVCodec         *vcodec;
-    AVDictionary    *avopt;
-    int              have_audio;
-    int              have_video;
+    AVStream          *astream;
+    AVStream          *vstream;
+    AVFrame           *aframe0;
+    AVFrame           *aframe1;
+    AVFrame           *vframe0;
+    AVFrame           *vframe1;
+    int64_t            next_apts;
+    int64_t            next_vpts;
+
+    AVFormatContext   *ofctxt;
+    AVCodec           *acodec;
+    AVCodec           *vcodec;
+    AVDictionary      *avopt;
+
+    int                have_audio;
+    int                have_video;
 } FFENCODER;
 
 // 内部全局变量定义
@@ -44,95 +43,124 @@ static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
     0,                  // audio_disable
     128000,             // audio_bitrate
     48000,              // sample_rate
+    AV_CH_LAYOUT_STEREO,// audio stereo
     0,                  // video_disable
     512000,             // video_bitrate
     320,                // video_width
     240,                // video_height
     25,                 // frame_rate
-    AV_PIX_FMT_ARGB,    // pixel_fmt_src
-    AV_PIX_FMT_YUV420P, // pixel_fmt_dst
+    AV_PIX_FMT_ARGB,    // pixel_fmt
     SWS_FAST_BILINEAR,  // scale_flags
 };
 
 // 内部函数实现
-/* add an output stream. */
-static void add_stream(OUTSTREAM *ost, AVFormatContext *oc, AVCodec **codec, enum AVCodecID codec_id, FFENCODER_PARAMS *params)
+static int add_astream(FFENCODER *encoder)
 {
-    AVCodecContext *c;
+    enum AVCodecID  codec_id = encoder->ofctxt->oformat->audio_codec;
+    AVCodecContext *c        = NULL;
     int i;
 
-    /* find the encoder */
-    *codec = avcodec_find_encoder(codec_id);
-    if (!(*codec)) {
+    if (encoder->params.audio_disable || codec_id == AV_CODEC_ID_NONE) return 0;
+
+    encoder->acodec = avcodec_find_encoder(codec_id);
+    if (!encoder->acodec) {
         log_printf("could not find encoder for '%s'\n", avcodec_get_name(codec_id));
-        exit(1);
+        return -1;
     }
 
-    ost->st = avformat_new_stream(oc, *codec);
-    if (!ost->st) {
+    encoder->astream = avformat_new_stream(encoder->ofctxt, encoder->acodec);
+    if (!encoder->astream) {
         log_printf("could not allocate stream\n");
-        exit(1);
-    }
-    ost->st->id = oc->nb_streams - 1;
-    c = ost->st->codec;
-
-    switch ((*codec)->type) {
-    case AVMEDIA_TYPE_AUDIO:
-        c->sample_fmt  = (*codec)->sample_fmts ? (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-        c->bit_rate    = params->audio_bitrate;
-        c->sample_rate = params->sample_rate;
-        if ((*codec)->supported_samplerates) {
-            c->sample_rate = (*codec)->supported_samplerates[0];
-            for (i = 0; (*codec)->supported_samplerates[i]; i++) {
-                if ((*codec)->supported_samplerates[i] == params->sample_rate)
-                    c->sample_rate = params->sample_rate;
-            }
-        }
-        c->channels       = av_get_channel_layout_nb_channels(c->channel_layout);
-        c->channel_layout = AV_CH_LAYOUT_STEREO;
-        if ((*codec)->channel_layouts) {
-            c->channel_layout = (*codec)->channel_layouts[0];
-            for (i = 0; (*codec)->channel_layouts[i]; i++) {
-                if ((*codec)->channel_layouts[i] == AV_CH_LAYOUT_STEREO)
-                    c->channel_layout = AV_CH_LAYOUT_STEREO;
-            }
-        }
-        c->channels        = av_get_channel_layout_nb_channels(c->channel_layout);
-        ost->st->time_base = (AVRational){ 1, c->sample_rate };
-        break;
-
-    case AVMEDIA_TYPE_VIDEO:
-        c->codec_id = codec_id;
-        c->bit_rate = params->video_bitrate;
-        /* Resolution must be a multiple of two. */
-        c->width    = params->video_width;
-        c->height   = params->video_height;
-        /* timebase: This is the fundamental unit of time (in seconds) in terms
-         * of which frame timestamps are represented. For fixed-fps content,
-         * timebase should be 1/framerate and timestamp increments should be
-         * identical to 1. */
-        ost->st->time_base = (AVRational){ 1, params->frame_rate };
-        c->time_base       = ost->st->time_base;
-        c->gop_size        = 12; /* emit one intra frame every twelve frames at most */
-        c->pix_fmt         = params->pixel_fmt_dst;
-        if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
-            /* just for testing, we also add B frames */
-            c->max_b_frames = 2;
-        }
-        if (c->codec_id == AV_CODEC_ID_MPEG1VIDEO) {
-            /* Needed to avoid using macroblocks in which some coeffs overflow.
-             * This does not happen with normal video, it just happens here as
-             * the motion of the chroma plane does not match the luma plane. */
-            c->mb_decision = 2;
-        }
-        break;
-
-    default: break;
+        return -1;
     }
 
-    /* Some formats want stream headers to be separate. */
-    if (oc->oformat->flags & AVFMT_GLOBALHEADER)
+    encoder->astream->id = encoder->ofctxt->nb_streams - 1;
+    c                    = encoder->astream->codec;
+
+    c->sample_fmt  = encoder->acodec->sample_fmts ? encoder->acodec->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+    c->bit_rate    = encoder->params.audio_bitrate;
+    c->sample_rate = encoder->params.sample_rate;
+    if (encoder->acodec->supported_samplerates)
+    {
+        c->sample_rate = encoder->acodec->supported_samplerates[0];
+        for (i=0; encoder->acodec->supported_samplerates[i]; i++) {
+            if (encoder->acodec->supported_samplerates[i] == encoder->params.sample_rate)
+                c->sample_rate = encoder->params.sample_rate;
+        }
+    }
+
+    c->channel_layout = encoder->params.channel_layout;
+    if (encoder->acodec->channel_layouts)
+    {
+        c->channel_layout = encoder->acodec->channel_layouts[0];
+        for (i=0; encoder->acodec->channel_layouts[i]; i++) {
+            if (encoder->acodec->channel_layouts[i] == encoder->params.channel_layout)
+                c->channel_layout = encoder->params.channel_layout;
+        }
+    }
+    c->channels = av_get_channel_layout_nb_channels(c->channel_layout);
+    encoder->astream->time_base = (AVRational){ 1, c->sample_rate };
+
+    /* some formats want stream headers to be separate. */
+    if (encoder->ofctxt->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+    encoder->have_audio = 1;
+    return 0;
+}
+
+static int add_vstream(FFENCODER *encoder)
+{
+    enum AVCodecID  codec_id = encoder->ofctxt->oformat->video_codec;
+    AVCodecContext *c        = NULL;
+
+    if (encoder->params.video_disable || codec_id == AV_CODEC_ID_NONE) return 0;
+
+    encoder->vcodec = avcodec_find_encoder(codec_id);
+    if (!encoder->vcodec) {
+        log_printf("could not find encoder for '%s'\n", avcodec_get_name(codec_id));
+        return -1;
+    }
+
+    encoder->vstream = avformat_new_stream(encoder->ofctxt, encoder->vcodec);
+    if (!encoder->vstream) {
+        log_printf("could not allocate stream\n");
+        return -1;
+    }
+
+    encoder->vstream->id = encoder->ofctxt->nb_streams - 1;
+    c                    = encoder->vstream->codec;
+
+    c->codec_id = codec_id;
+    c->bit_rate = encoder->params.video_bitrate;
+    /* Resolution must be a multiple of two. */
+    c->width    = encoder->params.video_width;
+    c->height   = encoder->params.video_height;
+    /* timebase: This is the fundamental unit of time (in seconds) in terms
+     * of which frame timestamps are represented. For fixed-fps content,
+     * timebase should be 1/framerate and timestamp increments should be
+     * identical to 1. */
+    encoder->vstream->time_base = (AVRational){ 1, encoder->params.frame_rate };
+    c->time_base = encoder->vstream->time_base;
+    c->gop_size  = 12; /* emit one intra frame every twelve frames at most */
+    c->pix_fmt   = encoder->params.pixel_fmt;
+    if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
+        /* just for testing, we also add B frames */
+        c->max_b_frames = 2;
+    }
+    if (c->codec_id == AV_CODEC_ID_MPEG1VIDEO) {
+        /* needed to avoid using macroblocks in which some coeffs overflow.
+         * This does not happen with normal video, it just happens here as
+         * the motion of the chroma plane does not match the luma plane. */
+        c->mb_decision = 2;
+    }
+
+    /* some formats want stream headers to be separate. */
+    if (encoder->ofctxt->oformat->flags & AVFMT_GLOBALHEADER)
+        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+    encoder->have_video = 1;
+    return 0;
 }
 
 static AVFrame *alloc_audio_frame(enum AVSampleFormat sample_fmt, uint64_t channel_layout, int sample_rate, int nb_samples)
@@ -161,14 +189,18 @@ static AVFrame *alloc_audio_frame(enum AVSampleFormat sample_fmt, uint64_t chann
     return frame;
 }
 
-static void open_audio(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDictionary *opt_arg)
+static void open_audio(FFENCODER *encoder)
 {
-    AVCodecContext *c;
-    int nb_samples;
-    int ret;
-    AVDictionary *opt = NULL;
-
-    c = ost->st->codec;
+    AVCodec        *codec     = encoder->acodec;
+    AVDictionary   *opt_arg   = encoder->avopt;
+    AVCodecContext *c         = encoder->astream->codec;
+    AVDictionary   *opt       = NULL;
+    int             in_sfmt   = AV_SAMPLE_FMT_S16;
+    int             in_layout = encoder->params.channel_layout;
+    int             in_rate   = encoder->params.sample_rate;
+    int             in_chnb   = av_get_channel_layout_nb_channels(in_layout);
+    int             nb_samples;
+    int             ret;
 
     /* open it */
     av_dict_copy(&opt, opt_arg, 0);
@@ -180,32 +212,32 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     }
 
     if (c->codec->capabilities & CODEC_CAP_VARIABLE_FRAME_SIZE)
-        nb_samples = c->frame_size;
+        nb_samples = 10000;
     else
         nb_samples = c->frame_size;
 
-    ost->frame     = alloc_audio_frame(c->sample_fmt, c->channel_layout,
-                                       c->sample_rate, nb_samples);
-    ost->tmp_frame = alloc_audio_frame(AV_SAMPLE_FMT_S16, c->channel_layout,
-                                       c->sample_rate, nb_samples);
+    encoder->aframe0 = alloc_audio_frame(c->sample_fmt, c->channel_layout,
+                                         c->sample_rate, nb_samples);
+    encoder->aframe1 = alloc_audio_frame(in_sfmt, in_layout,
+                                         in_rate, nb_samples);
 
     /* create resampler context */
-    ost->swr_ctx = swr_alloc();
-    if (!ost->swr_ctx) {
+    encoder->swr_ctx = swr_alloc();
+    if (!encoder->swr_ctx) {
         log_printf("could not allocate resampler context\n");
         exit(1);
     }
 
     /* set options */
-    av_opt_set_int       (ost->swr_ctx, "in_channel_count",  c->channels,       0);
-    av_opt_set_int       (ost->swr_ctx, "in_sample_rate",    c->sample_rate,    0);
-    av_opt_set_sample_fmt(ost->swr_ctx, "in_sample_fmt",     AV_SAMPLE_FMT_S16, 0);
-    av_opt_set_int       (ost->swr_ctx, "out_channel_count", c->channels,       0);
-    av_opt_set_int       (ost->swr_ctx, "out_sample_rate",   c->sample_rate,    0);
-    av_opt_set_sample_fmt(ost->swr_ctx, "out_sample_fmt",    c->sample_fmt,     0);
+    av_opt_set_int       (encoder->swr_ctx, "in_channel_count",  in_chnb,           0);
+    av_opt_set_int       (encoder->swr_ctx, "in_sample_rate",    in_rate,           0);
+    av_opt_set_sample_fmt(encoder->swr_ctx, "in_sample_fmt",     in_sfmt,           0);
+    av_opt_set_int       (encoder->swr_ctx, "out_channel_count", c->channels,       0);
+    av_opt_set_int       (encoder->swr_ctx, "out_sample_rate",   c->sample_rate,    0);
+    av_opt_set_sample_fmt(encoder->swr_ctx, "out_sample_fmt",    c->sample_fmt,     0);
 
     /* initialize the resampling context */
-    if ((ret = swr_init(ost->swr_ctx)) < 0) {
+    if ((ret = swr_init(encoder->swr_ctx)) < 0) {
         log_printf("failed to initialize the resampling context\n");
         exit(1);
     }
@@ -234,11 +266,13 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
     return picture;
 }
 
-static void open_video(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDictionary *opt_arg)
+static void open_video(FFENCODER *encoder)
 {
-    int ret;
-    AVCodecContext *c = ost->st->codec;
-    AVDictionary *opt = NULL;
+    AVCodec        *codec   = encoder->vcodec;
+    AVDictionary   *opt_arg = encoder->avopt;
+    AVCodecContext *c       = encoder->vstream->codec;
+    AVDictionary   *opt     = NULL;
+    int             ret;
 
     av_dict_copy(&opt, opt_arg, 0);
 
@@ -251,8 +285,8 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     }
 
     /* allocate and init a re-usable frame */
-    ost->frame = alloc_picture(c->pix_fmt, c->width, c->height);
-    if (!ost->frame) {
+    encoder->vframe0 = alloc_picture(c->pix_fmt, c->width, c->height);
+    if (!encoder->vframe0) {
         log_printf("could not allocate video frame\n");
         exit(1);
     }
@@ -260,23 +294,40 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     /* If the output format is not YUV420P, then a temporary YUV420P
      * picture is needed too. It is then converted to the required
      * output format. */
-    ost->tmp_frame = NULL;
-    if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
-        ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);
-        if (!ost->tmp_frame) {
+    encoder->vframe1 = NULL;
+    if (c->pix_fmt != encoder->params.pixel_fmt) {
+        encoder->vframe1 = alloc_picture(encoder->params.pixel_fmt, c->width, c->height);
+        if (!encoder->vframe1) {
             log_printf("could not allocate temporary picture\n");
             exit(1);
         }
     }
+
+    encoder->sws_ctx = sws_getContext(c->width, c->height,
+                                      encoder->params.pixel_fmt,
+                                      c->width, c->height,
+                                      c->pix_fmt,
+                                      encoder->params.scale_flags, NULL, NULL, NULL);
+    if (!encoder->sws_ctx) {
+        log_printf("could not initialize the conversion context\n");
+        exit(1);
+    }
 }
 
-static void close_stream(AVFormatContext *oc, OUTSTREAM *ost)
+static void close_astream(FFENCODER *encoder)
 {
-    avcodec_close(ost->st->codec);
-    av_frame_free(&ost->frame);
-    av_frame_free(&ost->tmp_frame);
-    sws_freeContext(ost->sws_ctx);
-    swr_free(&ost->swr_ctx);
+    avcodec_close(encoder->astream->codec);
+    av_frame_free(&(encoder->aframe0));
+    av_frame_free(&(encoder->aframe1));
+    swr_free     (&(encoder->swr_ctx));
+}
+
+static void close_vstream(FFENCODER *encoder)
+{
+    avcodec_close(encoder->vstream->codec);
+    av_frame_free(&(encoder->vframe0));
+    av_frame_free(&(encoder->vframe1));
+    sws_freeContext(encoder->sws_ctx);
 }
 
 // 函数实现
@@ -285,53 +336,56 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
     int ret;
 
     // allocate context for ffencoder
-    FFENCODER *ctxt = malloc(sizeof(FFENCODER));
-    if (ctxt) memset(ctxt, 0, sizeof(FFENCODER));
+    FFENCODER *encoder = malloc(sizeof(FFENCODER));
+    if (encoder) memset(encoder, 0, sizeof(FFENCODER));
     else return NULL;
 
     // using default params if not set
     if (params == NULL) params = &DEF_FFENCODER_PARAMS;
-    if (!params->audio_bitrate) params->audio_bitrate = 128000;
-    if (!params->sample_rate  ) params->sample_rate   = 48000;
-    if (!params->video_bitrate) params->video_bitrate = 512000;
-    if (!params->video_width  ) params->video_width   = 320;
-    if (!params->video_height ) params->video_height  = 240;
-    if (!params->frame_rate   ) params->frame_rate    = 25;
-    if (!params->pixel_fmt_src) params->pixel_fmt_src = AV_PIX_FMT_ARGB;
-    if (!params->pixel_fmt_dst) params->pixel_fmt_dst = AV_PIX_FMT_YUV420P;
-    if (!params->scale_flags  ) params->scale_flags   = SWS_FAST_BILINEAR;
+    if (!params->audio_bitrate ) params->audio_bitrate = 128000;
+    if (!params->sample_rate   ) params->sample_rate   = 48000;
+    if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
+    if (!params->video_bitrate ) params->video_bitrate = 512000;
+    if (!params->video_width   ) params->video_width   = 320;
+    if (!params->video_height  ) params->video_height  = 240;
+    if (!params->frame_rate    ) params->frame_rate    = 25;
+    if (!params->pixel_fmt     ) params->pixel_fmt     = AV_PIX_FMT_ARGB;
+    if (!params->scale_flags   ) params->scale_flags   = SWS_FAST_BILINEAR;
+    memcpy(&(encoder->params), params, sizeof(FFENCODER_PARAMS));
 
     /* initialize libavcodec, and register all codecs and formats. */
     av_register_all();
 
     /* allocate the output media context */
-    avformat_alloc_output_context2(&(ctxt->ofctxt), NULL, NULL, params->filename);
-    if (!ctxt->ofctxt)
+    avformat_alloc_output_context2(&(encoder->ofctxt), NULL, NULL, params->filename);
+    if (!encoder->ofctxt)
     {
         log_printf("could not deduce output format from file extension: using MPEG.\n");
         goto failed;
     }
-    else ctxt->outfmt = ctxt->ofctxt->oformat;
 
     /* add the audio and video streams using the default format codecs
      * and initialize the codecs. */
-    if (!params->audio_disable && ctxt->outfmt->audio_codec != AV_CODEC_ID_NONE) {
-        add_stream(&(ctxt->astream), ctxt->ofctxt, &(ctxt->acodec), ctxt->outfmt->audio_codec, params);
-        ctxt->have_audio = 1;
+    if (add_astream(encoder) < 0)
+    {
+        log_printf("failed to add audio stream.\n");
+        goto failed;
     }
-    if (!params->video_disable && ctxt->outfmt->video_codec != AV_CODEC_ID_NONE) {
-        add_stream(&(ctxt->vstream), ctxt->ofctxt, &(ctxt->vcodec), ctxt->outfmt->video_codec, params);
-        ctxt->have_video = 1;
+
+    if (add_vstream(encoder) < 0)
+    {
+        log_printf("failed to add video stream.\n");
+        goto failed;
     }
 
     /* now that all the parameters are set, we can open the audio and
      * video codecs and allocate the necessary encode buffers. */
-    if (ctxt->have_audio) open_audio(ctxt->ofctxt, ctxt->acodec, &(ctxt->astream), ctxt->avopt);
-    if (ctxt->have_video) open_video(ctxt->ofctxt, ctxt->vcodec, &(ctxt->vstream), ctxt->avopt);
+    if (encoder->have_audio) open_audio(encoder);
+    if (encoder->have_video) open_video(encoder);
 
     /* open the output file, if needed */
-    if (!(ctxt->outfmt->flags & AVFMT_NOFILE)) {
-        ret = avio_open(&ctxt->ofctxt->pb, params->filename, AVIO_FLAG_WRITE);
+    if (!(encoder->ofctxt->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&encoder->ofctxt->pb, params->filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
             log_printf("could not open '%s': %s\n", params->filename, av_err2str(ret));
             goto failed;
@@ -339,49 +393,49 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
     }
 
     /* write the stream header, if any. */
-    ret = avformat_write_header(ctxt->ofctxt, &(ctxt->avopt));
+    ret = avformat_write_header(encoder->ofctxt, &(encoder->avopt));
     if (ret < 0) {
         log_printf("error occurred when opening output file: %s\n", av_err2str(ret));
         goto failed;
     }
 
     // successed
-    return ctxt;
+    return encoder;
 
 failed:
-    ffencoder_free(ctxt);
+    ffencoder_free(encoder);
     return NULL;
 }
 
-void ffencoder_free(void *encoder)
+void ffencoder_free(void *ctxt)
 {
-    FFENCODER *ctxt = (FFENCODER*)encoder;
+    FFENCODER *encoder = (FFENCODER*)ctxt;
     if (!ctxt) return;
     
     /* write the trailer, if any. The trailer must be written before you
      * close the CodecContexts open when you wrote the header; otherwise
      * av_write_trailer() may try to use memory that was freed on
      * av_codec_close(). */
-    av_write_trailer(ctxt->ofctxt);
+    av_write_trailer(encoder->ofctxt);
 
     /* close each codec. */
-    if (ctxt->have_video) close_stream(ctxt->ofctxt, &(ctxt->vstream));
-    if (ctxt->have_audio) close_stream(ctxt->ofctxt, &(ctxt->astream));
+    if (encoder->have_video) close_astream(encoder);
+    if (encoder->have_audio) close_vstream(encoder);
 
     /* close the output file. */
-    if (!(ctxt->outfmt->flags & AVFMT_NOFILE)) avio_close(ctxt->ofctxt->pb);
+    if (!(encoder->ofctxt->oformat->flags & AVFMT_NOFILE)) avio_close(encoder->ofctxt->pb);
 
     /* free the stream */
-    avformat_free_context(ctxt->ofctxt);
+    avformat_free_context(encoder->ofctxt);
     
     // free encoder context
-    free(ctxt);
+    free(encoder);
 }
 
-void ffencoder_audio(void *encoder)
+void ffencoder_audio(void *ctxt)
 {
 }
 
-void ffencoder_video(void *encoder)
+void ffencoder_video(void *ctxt)
 {
 }
