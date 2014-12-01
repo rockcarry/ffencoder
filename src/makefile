@@ -16,7 +16,8 @@ OBJS = \
 
 # 所有的可执行目标
 EXES = \
-    test.exe \
+    test1.exe \
+    test2.exe \
 
 # 输出的库文件
 DLL = ffencoder.dll

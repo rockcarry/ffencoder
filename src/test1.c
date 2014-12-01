@@ -7,7 +7,6 @@
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
-#include "log.h"
 
 // 常量定义
 #define STREAM_DURATION    20.0
@@ -32,7 +31,7 @@ static void log_packet(AVFormatContext *fmt_ctx, AVPacket *pkt)
 {
     AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
 
-    log_printf("pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d\n",
+    printf("pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d\n",
            av_ts2str(pkt->pts), av_ts2timestr(pkt->pts, time_base),
            av_ts2str(pkt->dts), av_ts2timestr(pkt->dts, time_base),
            av_ts2str(pkt->duration), av_ts2timestr(pkt->duration, time_base),
@@ -60,13 +59,13 @@ static void add_stream(OUTSTREAM *ost, AVFormatContext *oc, AVCodec **codec, enu
     /* find the encoder */
     *codec = avcodec_find_encoder(codec_id);
     if (!(*codec)) {
-        log_printf("could not find encoder for '%s'\n", avcodec_get_name(codec_id));
+        printf("could not find encoder for '%s'\n", avcodec_get_name(codec_id));
         exit(1);
     }
 
     ost->st = avformat_new_stream(oc, *codec);
     if (!ost->st) {
-        log_printf("could not allocate stream\n");
+        printf("could not allocate stream\n");
         exit(1);
     }
     ost->st->id = oc->nb_streams - 1;
@@ -147,7 +146,7 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
     /* allocate the buffers for the frame data */
     ret = av_frame_get_buffer(picture, 32);
     if (ret < 0) {
-        log_printf("could not allocate frame data.\n");
+        printf("could not allocate frame data.\n");
         exit(1);
     }
 
@@ -166,14 +165,14 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     ret = avcodec_open2(c, codec, &opt);
     av_dict_free(&opt);
     if (ret < 0) {
-        log_printf("could not open video codec: %s\n", av_err2str(ret));
+        printf("could not open video codec: %s\n", av_err2str(ret));
         exit(1);
     }
 
     /* allocate and init a re-usable frame */
     ost->frame = alloc_picture(c->pix_fmt, c->width, c->height);
     if (!ost->frame) {
-        log_printf("could not allocate video frame\n");
+        printf("could not allocate video frame\n");
         exit(1);
     }
 
@@ -184,7 +183,7 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
         ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);
         if (!ost->tmp_frame) {
-            log_printf("could not allocate temporary picture\n");
+            printf("could not allocate temporary picture\n");
             exit(1);
         }
     }
@@ -238,7 +237,7 @@ static AVFrame *get_video_frame(OUTSTREAM *ost)
                                           c->pix_fmt,
                                           SCALE_FLAGS, NULL, NULL, NULL);
             if (!ost->sws_ctx) {
-                log_printf("could not initialize the conversion context\n");
+                printf("could not initialize the conversion context\n");
                 exit(1);
             }
         }
@@ -290,7 +289,7 @@ static int write_video_frame(AVFormatContext *oc, OUTSTREAM *ost)
         /* encode the image */
         ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);
         if (ret < 0) {
-            log_printf("error encoding video frame: %s\n", av_err2str(ret));
+            printf("error encoding video frame: %s\n", av_err2str(ret));
             exit(1);
         }
 
@@ -302,7 +301,7 @@ static int write_video_frame(AVFormatContext *oc, OUTSTREAM *ost)
     }
 
     if (ret < 0) {
-        log_printf("error while writing video frame: %s\n", av_err2str(ret));
+        printf("error while writing video frame: %s\n", av_err2str(ret));
         exit(1);
     }
 
@@ -315,7 +314,7 @@ static AVFrame *alloc_audio_frame(enum AVSampleFormat sample_fmt, uint64_t chann
     int ret;
 
     if (!frame) {
-        log_printf("error allocating an audio frame\n");
+        printf("error allocating an audio frame\n");
         exit(1);
     }
 
@@ -327,7 +326,7 @@ static AVFrame *alloc_audio_frame(enum AVSampleFormat sample_fmt, uint64_t chann
     if (nb_samples) {
         ret = av_frame_get_buffer(frame, 0);
         if (ret < 0) {
-            log_printf("error allocating an audio buffer\n");
+            printf("error allocating an audio buffer\n");
             exit(1);
         }
     }
@@ -349,7 +348,7 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     ret = avcodec_open2(c, codec, &opt);
     av_dict_free(&opt);
     if (ret < 0) {
-        log_printf("could not open audio codec: %s\n", av_err2str(ret));
+        printf("could not open audio codec: %s\n", av_err2str(ret));
         exit(1);
     }
 
@@ -366,7 +365,7 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
     /* create resampler context */
     ost->swr_ctx = swr_alloc();
     if (!ost->swr_ctx) {
-        log_printf("could not allocate resampler context\n");
+        printf("could not allocate resampler context\n");
         exit(1);
     }
 
@@ -380,7 +379,7 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OUTSTREAM *ost, AVDi
 
     /* initialize the resampling context */
     if ((ret = swr_init(ost->swr_ctx)) < 0) {
-        log_printf("failed to initialize the resampling context\n");
+        printf("failed to initialize the resampling context\n");
         exit(1);
     }
 }
@@ -445,7 +444,7 @@ static int write_audio_frame(AVFormatContext *oc, OUTSTREAM *ost)
                           ost->frame->data, dst_nb_samples,
                           (const uint8_t **)frame->data, frame->nb_samples);
         if (ret < 0) {
-            log_printf("error while converting\n");
+            printf("error while converting\n");
             exit(1);
         }
         frame = ost->frame;
@@ -456,15 +455,15 @@ static int write_audio_frame(AVFormatContext *oc, OUTSTREAM *ost)
 
     ret = avcodec_encode_audio2(c, &pkt, frame, &got_packet);
     if (ret < 0) {
-        log_printf("error encoding audio frame: %s\n", av_err2str(ret));
+        printf("error encoding audio frame: %s\n", av_err2str(ret));
         exit(1);
     }
 
     if (got_packet) {
         ret = write_frame(oc, &c->time_base, ost->st, &pkt);
         if (ret < 0) {
-            log_printf("error while writing audio frame: %s\n",
-                    av_err2str(ret));
+            printf("error while writing audio frame: %s\n",
+                   av_err2str(ret));
             exit(1);
         }
     }
@@ -497,15 +496,13 @@ int main(void)
     int              encode_audio = 0;
     int              ret;
 
-    log_init("STDOUT");
-
     /* initialize libavcodec, and register all codecs and formats. */
     av_register_all();
 
     /* allocate the output media context */
     avformat_alloc_output_context2(&ctxt, NULL, NULL, filename);
     if (!ctxt) {
-        log_printf("could not deduce output format from file extension: using MPEG.\n");
+        printf("could not deduce output format from file extension: using MPEG.\n");
         avformat_alloc_output_context2(&ctxt, NULL, "mpeg", filename);
     }
     if (!ctxt) return 1;
@@ -536,7 +533,7 @@ int main(void)
     if (!(fmt->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ctxt->pb, filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
-            log_printf("could not open '%s': %s\n", filename, av_err2str(ret));
+            printf("could not open '%s': %s\n", filename, av_err2str(ret));
             return 1;
         }
     }
@@ -544,7 +541,7 @@ int main(void)
     /* write the stream header, if any. */
     ret = avformat_write_header(ctxt, &opt);
     if (ret < 0) {
-        log_printf("error occurred when opening output file: %s\n", av_err2str(ret));
+        printf("error occurred when opening output file: %s\n", av_err2str(ret));
         return 1;
     }
 
@@ -575,6 +572,5 @@ int main(void)
     /* free the stream */
     avformat_free_context(ctxt);
 
-    log_done();
     return 0;
 }
