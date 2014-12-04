@@ -25,6 +25,7 @@ typedef struct
     int pixel_fmt;
     int scale_flags;
 
+    // for debug
     int enable_log;
 } FFENCODER_PARAMS;
 

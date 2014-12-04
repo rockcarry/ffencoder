@@ -42,7 +42,7 @@ static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
 {
     "test.mp4",         // filename
     0,                  // audio_disable
-    96000,              // audio_bitrate
+    64000,              // audio_bitrate
     48000,              // sample_rate
     AV_CH_LAYOUT_STEREO,// audio stereo
     0,                  // video_disable
@@ -335,7 +335,7 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
 
     // using default params if not set
     if (params == NULL) params = &DEF_FFENCODER_PARAMS;
-    if (!params->audio_bitrate ) params->audio_bitrate = 96000;
+    if (!params->audio_bitrate ) params->audio_bitrate = 64000;
     if (!params->sample_rate   ) params->sample_rate   = 48000;
     if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
     if (!params->video_bitrate ) params->video_bitrate = 384000;
@@ -458,7 +458,7 @@ void ffencoder_audio(void *ctxt, void *data[8], int nbsample)
             av_assert0(dst_nb_samples == encoder->samples_filled);
 
             /* convert to destination format */
-            ret = swr_convert(encoder->swr_ctx, encoder->aframe0->data, dst_nb_samples, (const uint8_t **)encoder->aframe1->data, encoder->samples_filled);
+            ret = swr_convert(encoder->swr_ctx, encoder->aframe0->data, dst_nb_samples, (const uint8_t **)encoder->aframe1->data, encoder->aframe1->nb_samples);
             if (ret < 0) {
                 log_printf("error while converting\n");
                 exit(1);
