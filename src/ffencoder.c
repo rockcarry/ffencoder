@@ -42,11 +42,11 @@ static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
 {
     "test.mp4",         // filename
     0,                  // audio_disable
-    128000,             // audio_bitrate
+    96000,              // audio_bitrate
     48000,              // sample_rate
     AV_CH_LAYOUT_STEREO,// audio stereo
     0,                  // video_disable
-    512000,             // video_bitrate
+    384000,             // video_bitrate
     256,                // video_width
     240,                // video_height
     30,                 // frame_rate
@@ -335,10 +335,10 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
 
     // using default params if not set
     if (params == NULL) params = &DEF_FFENCODER_PARAMS;
-    if (!params->audio_bitrate ) params->audio_bitrate = 128000;
+    if (!params->audio_bitrate ) params->audio_bitrate = 96000;
     if (!params->sample_rate   ) params->sample_rate   = 48000;
     if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
-    if (!params->video_bitrate ) params->video_bitrate = 512000;
+    if (!params->video_bitrate ) params->video_bitrate = 384000;
     if (!params->video_width   ) params->video_width   = 256;
     if (!params->video_height  ) params->video_height  = 240;
     if (!params->frame_rate    ) params->frame_rate    = 30;
@@ -428,7 +428,7 @@ void ffencoder_free(void *ctxt)
     free(encoder);
 
     // log done
-    if (params->enable_log) log_done();
+    if (encoder->params.enable_log) log_done();
 }
 
 void ffencoder_audio(void *ctxt, void *data[8], int nbsample)
