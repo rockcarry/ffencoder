@@ -11,7 +11,6 @@ CCFLAGS = -Wall -I$(FFMPEG_INC) -L$(FFMPEG_LIB)
 
 # 所有的目标文件
 OBJS = \
-    log.o \
     ffencoder.o \
 
 # 所有的可执行目标

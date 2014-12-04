@@ -24,6 +24,8 @@ typedef struct
     int frame_rate;
     int pixel_fmt;
     int scale_flags;
+
+    int enable_log;
 } FFENCODER_PARAMS;
 
 // º¯ÊıÉùÃ÷

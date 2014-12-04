@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include "log.h"
 
 // 内部常量定义
 #define LOG_MODE_DISABLE  0
@@ -16,7 +15,7 @@ static FILE *s_log_fp   = NULL;
 static DWORD s_log_mode = LOG_MODE_DISABLE;
 
 /* 函数实现 */
-void log_init(char *file)
+static void log_init(char *file)
 {
     if (!s_log_fp) {
         if (strcmp(file, "DEBUGER") == 0) {
@@ -39,7 +38,7 @@ void log_init(char *file)
     }
 }
 
-void log_done(void)
+static void log_done(void)
 {
     if (s_log_mode == LOG_MODE_FILE)
     {
@@ -51,7 +50,7 @@ void log_done(void)
 }
 
 #define MAX_LOG_BUF 1024
-void log_printf(char *format, ...)
+static void log_printf(char *format, ...)
 {
     char buf[MAX_LOG_BUF];
     va_list valist;

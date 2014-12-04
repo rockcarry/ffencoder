@@ -8,7 +8,7 @@
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include "ffencoder.h"
-#include "log.h"
+#include "log.c"
 
 // 内部类型定义
 typedef struct
@@ -47,9 +47,9 @@ static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
     AV_CH_LAYOUT_STEREO,// audio stereo
     0,                  // video_disable
     512000,             // video_bitrate
-    320,                // video_width
+    256,                // video_width
     240,                // video_height
-    25,                 // frame_rate
+    30,                 // frame_rate
     AV_PIX_FMT_BGRA,    // pixel_fmt
     SWS_FAST_BILINEAR,  // scale_flags
 };
@@ -225,12 +225,12 @@ static void open_audio(FFENCODER *encoder)
     }
 
     /* set options */
-    av_opt_set_int       (encoder->swr_ctx, "in_channel_count",  in_chnb,           0);
-    av_opt_set_int       (encoder->swr_ctx, "in_sample_rate",    in_rate,           0);
-    av_opt_set_sample_fmt(encoder->swr_ctx, "in_sample_fmt",     in_sfmt,           0);
-    av_opt_set_int       (encoder->swr_ctx, "out_channel_count", c->channels,       0);
-    av_opt_set_int       (encoder->swr_ctx, "out_sample_rate",   c->sample_rate,    0);
-    av_opt_set_sample_fmt(encoder->swr_ctx, "out_sample_fmt",    c->sample_fmt,     0);
+    av_opt_set_int       (encoder->swr_ctx, "in_channel_count",  in_chnb,        0);
+    av_opt_set_int       (encoder->swr_ctx, "in_sample_rate",    in_rate,        0);
+    av_opt_set_sample_fmt(encoder->swr_ctx, "in_sample_fmt",     in_sfmt,        0);
+    av_opt_set_int       (encoder->swr_ctx, "out_channel_count", c->channels,    0);
+    av_opt_set_int       (encoder->swr_ctx, "out_sample_rate",   c->sample_rate, 0);
+    av_opt_set_sample_fmt(encoder->swr_ctx, "out_sample_fmt",    c->sample_fmt,  0);
 
     /* initialize the resampling context */
     if ((ret = swr_init(encoder->swr_ctx)) < 0) {
@@ -339,12 +339,15 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
     if (!params->sample_rate   ) params->sample_rate   = 48000;
     if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
     if (!params->video_bitrate ) params->video_bitrate = 512000;
-    if (!params->video_width   ) params->video_width   = 320;
+    if (!params->video_width   ) params->video_width   = 256;
     if (!params->video_height  ) params->video_height  = 240;
-    if (!params->frame_rate    ) params->frame_rate    = 25;
+    if (!params->frame_rate    ) params->frame_rate    = 30;
     if (!params->pixel_fmt     ) params->pixel_fmt     = AV_PIX_FMT_ARGB;
     if (!params->scale_flags   ) params->scale_flags   = SWS_FAST_BILINEAR;
     memcpy(&(encoder->params), params, sizeof(FFENCODER_PARAMS));
+
+    // init log if enabled
+    if (params->enable_log) log_init("ffencoder.log");
 
     /* initialize libavcodec, and register all codecs and formats. */
     av_register_all();
@@ -423,6 +426,9 @@ void ffencoder_free(void *ctxt)
     
     // free encoder context
     free(encoder);
+
+    // log done
+    if (params->enable_log) log_done();
 }
 
 void ffencoder_audio(void *ctxt, void *data[8], int nbsample)

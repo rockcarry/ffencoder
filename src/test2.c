@@ -1,6 +1,5 @@
 // 包含头文件
 #include "ffencoder.h"
-#include "log.h"
 
 int main(void)
 {
@@ -11,8 +10,6 @@ int main(void)
     void *vdata   [8] = { vbuf };
     int   linesize[8] = { 320 * 4 };
     int   i, j;
-
-    log_init("test2.log");
 
     encoder = ffencoder_init(NULL);
     
@@ -31,7 +28,5 @@ int main(void)
     }
 
     ffencoder_free(encoder);
-
-    log_done();
     return 0;
 }
