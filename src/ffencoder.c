@@ -7,6 +7,7 @@
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
+#include "stdefine.h"
 #include "ffencoder.h"
 #include "log.c"
 

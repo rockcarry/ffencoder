@@ -1,4 +1,5 @@
 // 包含头文件
+#include "stdefine.h"
 #include "ffencoder.h"
 
 int main(void)
