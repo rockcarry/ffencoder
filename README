@@ -1,0 +1,33 @@
++-------------+
+ instroduction
++-------------+
+ffencoder is a video encoder based on ffmpeg. It wraps around ffmpeg encoding and muxing functions, providing a simple interface to encode audio and video data into mp4 file.
+
+I wrote a script to auto make dll from ffmpeg source code for mingw32. It will auto download and patch source code, and then make out dll file. I only enable h264 and aac encoding of ffmpeg configure to make dll size small.
+
+It's quite easy to use, only exposing four C functions interface for user. It has already been used and tested on my ffnes project for nes game replay recording.
+
++-----------+
+ how to make
++-----------+
+1. first you need a ubuntu pc, and install wget, git, yasm, mingw32, etc.
+2. run script build_ffmpeg_lib.sh, it will download and build ffmpeg, x264, faac source codes.
+3. cd src dir, then make, you will get ffencoder.dll
+4. run i586-mingw32msvc-strip ffencoder.dll, this will make ffencoder.dll small size
+5. these files: ffencoder.dll, ffencoder.h are for you usage.
+6. for msvc++ you could use pexports and lib tool to make a ffencoder.lib from ffencoder.dll
+
+
++-----------+
+ how to use
++-----------+
+no need to explain more, because only 4 functions:
+void* ffencoder_init (FFENCODER_PARAMS *params);
+void  ffencoder_free (void *ctxt);
+void  ffencoder_audio(void *ctxt, void *data[8], int nbsample   );
+void  ffencoder_video(void *ctxt, void *data[8], int linesize[8]);
+
+
+rockcarry
+2014-12-5
+
