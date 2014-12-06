@@ -20,14 +20,14 @@ typedef struct
     struct SwrContext *swr_ctx;
 
     AVStream          *astream;
-    AVStream          *vstream;
     AVFrame           *aframe0;
     AVFrame           *aframe1;
-    AVFrame           *vframe;
     int64_t            next_apts;
-    int64_t            next_vpts;
-    int                samples_ntotal;
     int                samples_filled;
+
+    AVStream          *vstream;
+    AVFrame           *vframe;
+    int64_t            next_vpts;
 
     AVFormatContext   *ofctxt;
     AVCodec           *acodec;
@@ -42,17 +42,17 @@ typedef struct
 static FFENCODER_PARAMS DEF_FFENCODER_PARAMS =
 {
     "test.mp4",         // filename
-    0,                  // audio_disable
-    64000,              // audio_bitrate
+    128000,             // audio_bitrate
     48000,              // sample_rate
     AV_CH_LAYOUT_STEREO,// audio stereo
-    0,                  // video_disable
-    384000,             // video_bitrate
+    0,                  // start_apts
+    512000,             // video_bitrate
     256,                // video_width
     240,                // video_height
     30,                 // frame_rate
     AV_PIX_FMT_BGRA,    // pixel_fmt
     SWS_FAST_BILINEAR,  // scale_flags
+    0,                  // start_vpts
 };
 
 // 内部函数实现
@@ -62,7 +62,7 @@ static int add_astream(FFENCODER *encoder)
     AVCodecContext *c        = NULL;
     int i;
 
-    if (encoder->params.audio_disable || codec_id == AV_CODEC_ID_NONE) return 0;
+    if (codec_id == AV_CODEC_ID_NONE) return 0;
 
     encoder->acodec = avcodec_find_encoder(codec_id);
     if (!encoder->acodec) {
@@ -116,7 +116,7 @@ static int add_vstream(FFENCODER *encoder)
     enum AVCodecID  codec_id = encoder->ofctxt->oformat->video_codec;
     AVCodecContext *c        = NULL;
 
-    if (encoder->params.video_disable || codec_id == AV_CODEC_ID_NONE) return 0;
+    if (codec_id == AV_CODEC_ID_NONE) return 0;
 
     encoder->vcodec = avcodec_find_encoder(codec_id);
     if (!encoder->vcodec) {
@@ -314,11 +314,30 @@ static void close_vstream(FFENCODER *encoder)
     sws_freeContext(encoder->sws_ctx);
 }
 
+#define ENABLE_LOG_PACKET 1
+#if ENABLE_LOG_PACKET
+static void log_packet(AVFormatContext *fmt_ctx, AVPacket *pkt)
+{
+    AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
+
+    log_printf("pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d\n",
+           av_ts2str(pkt->pts), av_ts2timestr(pkt->pts, time_base),
+           av_ts2str(pkt->dts), av_ts2timestr(pkt->dts, time_base),
+           av_ts2str(pkt->duration), av_ts2timestr(pkt->duration, time_base),
+           pkt->stream_index);
+}
+#endif
+
 static int write_frame(AVFormatContext *fmt_ctx, const AVRational *time_base, AVStream *st, AVPacket *pkt)
 {
     /* rescale output packet timestamp values from codec to stream timebase */
     av_packet_rescale_ts(pkt, *time_base, st->time_base);
     pkt->stream_index = st->index;
+
+#if ENABLE_LOG_PACKET
+    /* Write the compressed frame to the media file. */
+    log_packet(fmt_ctx, pkt);
+#endif
 
     /* Write the compressed frame to the media file. */
     return av_interleaved_write_frame(fmt_ctx, pkt);
@@ -335,17 +354,20 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
     else return NULL;
 
     // using default params if not set
-    if (params == NULL) params = &DEF_FFENCODER_PARAMS;
-    if (!params->audio_bitrate ) params->audio_bitrate = 64000;
+    if (!params                ) params                = &DEF_FFENCODER_PARAMS;
+    if (!params->filename      ) params->filename      = "test.mp4";
+    if (!params->audio_bitrate ) params->audio_bitrate = 128000;
     if (!params->sample_rate   ) params->sample_rate   = 48000;
     if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
-    if (!params->video_bitrate ) params->video_bitrate = 384000;
+    if (!params->video_bitrate ) params->video_bitrate = 512000;
     if (!params->video_width   ) params->video_width   = 256;
     if (!params->video_height  ) params->video_height  = 240;
     if (!params->frame_rate    ) params->frame_rate    = 30;
-    if (!params->pixel_fmt     ) params->pixel_fmt     = AV_PIX_FMT_ARGB;
+    if (!params->pixel_fmt     ) params->pixel_fmt     = AV_PIX_FMT_BGRA;
     if (!params->scale_flags   ) params->scale_flags   = SWS_FAST_BILINEAR;
     memcpy(&(encoder->params), params, sizeof(FFENCODER_PARAMS));
+    encoder->next_apts = params->start_apts;
+    encoder->next_vpts = params->start_vpts;
 
     // init log if enabled
     if (params->enable_log) log_init("ffencoder.log");
@@ -465,9 +487,9 @@ void ffencoder_audio(void *ctxt, void *data[8], int nbsample)
                 exit(1);
             }
 
-            encoder->aframe0->pts = av_rescale_q(encoder->samples_ntotal,
+            encoder->aframe0->pts = av_rescale_q(encoder->next_apts,
                 (AVRational){1, encoder->astream->codec->sample_rate}, encoder->astream->codec->time_base);
-            encoder->samples_ntotal += dst_nb_samples;
+            encoder->next_apts += dst_nb_samples;
 
             /* when we pass a frame to the encoder, it may keep a reference to it
              * internally;
