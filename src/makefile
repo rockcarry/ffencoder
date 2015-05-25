@@ -2,8 +2,8 @@
 # written by rockcarry
 
 # for ffmpeg
-FFMPEG_INC = ../ffmpeglib/include
-FFMPEG_LIB = ../ffmpeglib/lib
+FFMPEG_INC = ../ffmpeg_sdk_win32/include
+FFMPEG_LIB = ../ffmpeg_sdk_win32/lib
 
 # ±‡“Î∆˜∂®“Â
 CC      = i586-mingw32msvc-gcc
