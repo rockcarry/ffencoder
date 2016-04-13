@@ -1,3 +1,7 @@
 !.gitignore
-ffmpeg_sdk_win32/
+x264/
+ffmpeg/
+yasm-1.2.0/
+yasm-install/
+
 

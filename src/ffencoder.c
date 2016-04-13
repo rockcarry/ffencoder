@@ -355,16 +355,16 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
 
     // using default params if not set
     if (!params                ) params                = &DEF_FFENCODER_PARAMS;
-    if (!params->filename      ) params->filename      = "test.mp4";
-    if (!params->audio_bitrate ) params->audio_bitrate = 128000;
-    if (!params->sample_rate   ) params->sample_rate   = 48000;
-    if (!params->channel_layout) params->channel_layout= AV_CH_LAYOUT_STEREO;
-    if (!params->video_bitrate ) params->video_bitrate = 512000;
-    if (!params->video_width   ) params->video_width   = 256;
-    if (!params->video_height  ) params->video_height  = 240;
-    if (!params->frame_rate    ) params->frame_rate    = 30;
-    if (!params->pixel_fmt     ) params->pixel_fmt     = AV_PIX_FMT_BGRA;
-    if (!params->scale_flags   ) params->scale_flags   = SWS_FAST_BILINEAR;
+    if (!params->filename      ) params->filename      = DEF_FFENCODER_PARAMS.filename;
+    if (!params->audio_bitrate ) params->audio_bitrate = DEF_FFENCODER_PARAMS.audio_bitrate;
+    if (!params->sample_rate   ) params->sample_rate   = DEF_FFENCODER_PARAMS.sample_rate;
+    if (!params->channel_layout) params->channel_layout= DEF_FFENCODER_PARAMS.channel_layout;
+    if (!params->video_bitrate ) params->video_bitrate = DEF_FFENCODER_PARAMS.video_bitrate;
+    if (!params->video_width   ) params->video_width   = DEF_FFENCODER_PARAMS.video_width;
+    if (!params->video_height  ) params->video_height  = DEF_FFENCODER_PARAMS.video_height;
+    if (!params->frame_rate    ) params->frame_rate    = DEF_FFENCODER_PARAMS.frame_rate;
+    if (!params->pixel_fmt     ) params->pixel_fmt     = DEF_FFENCODER_PARAMS.pixel_fmt;
+    if (!params->scale_flags   ) params->scale_flags   = DEF_FFENCODER_PARAMS.scale_flags;
     memcpy(&(encoder->params), params, sizeof(FFENCODER_PARAMS));
     encoder->next_apts = params->start_apts;
     encoder->next_vpts = params->start_vpts;
@@ -430,16 +430,16 @@ void ffencoder_free(void *ctxt)
 {
     FFENCODER *encoder = (FFENCODER*)ctxt;
     if (!ctxt) return;
-    
+
+    /* close each codec. */
+    if (encoder->have_audio) close_astream(encoder);
+    if (encoder->have_video) close_vstream(encoder);
+
     /* write the trailer, if any. The trailer must be written before you
      * close the CodecContexts open when you wrote the header; otherwise
      * av_write_trailer() may try to use memory that was freed on
      * av_codec_close(). */
     av_write_trailer(encoder->ofctxt);
-
-    /* close each codec. */
-    if (encoder->have_video) close_astream(encoder);
-    if (encoder->have_audio) close_vstream(encoder);
 
     /* close the output file. */
     if (!(encoder->ofctxt->oformat->flags & AVFMT_NOFILE)) avio_close(encoder->ofctxt->pb);

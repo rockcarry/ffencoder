@@ -2,6 +2,15 @@
 #include "stdefine.h"
 #include "ffencoder.h"
 
+static void rand_buf(void *buf, int size)
+{
+    DWORD *ptrdw = (DWORD*)buf;
+    while (size) {
+        *ptrdw++ = rand();
+        size -= 4;
+    }
+}
+
 int main(void)
 {
     void *encoder = NULL;
@@ -10,21 +19,16 @@ int main(void)
     void *adata   [8] = { abuf };
     void *vdata   [8] = { vbuf };
     int   linesize[8] = { 256 * 4 };
-    int   i, j;
+    int   i;
 
     encoder = ffencoder_init(NULL);
     
     for (i=0; i<500; i++)
     {
-        for (j=0; j<1600*2 ; j++) ((short*)abuf)[j] = rand();
-        for (j=0; j<256*240; j++)
-        {
-            vbuf[j*4 + 0] = rand();
-            vbuf[j*4 + 1] = rand();
-            vbuf[j*4 + 2] = rand();
-            vbuf[j*4 + 3] = 0;
-        }
+        rand_buf(abuf, sizeof(abuf));
         ffencoder_audio(encoder, adata, 1600    );
+
+        rand_buf(vbuf, sizeof(vbuf));
         ffencoder_video(encoder, vdata, linesize);
     }
 

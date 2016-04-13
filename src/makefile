@@ -2,8 +2,8 @@
 # written by rockcarry
 
 # for ffmpeg
-FFMPEG_INC = ../ffmpeg_sdk_win32/include
-FFMPEG_LIB = ../ffmpeg_sdk_win32/lib
+FFMPEG_INC = ${PWD}/../ffmpeg_sdk_win32/include
+FFMPEG_LIB = ${PWD}/../ffmpeg_sdk_win32/lib
 
 # ±‡“Î∆˜∂®“Â
 CC      = i586-mingw32msvc-gcc
@@ -25,7 +25,7 @@ DLL = ffencoder.dll
 all : $(DLL) $(EXES)
 
 $(DLL) : $(OBJS)
-	$(CC) $(CCFLAGS) -o $@ $(OBJS) --share -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lfaac
+	$(CC) $(CCFLAGS) -o $@ $(OBJS) --share -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264
 
 %.o : %.c %.h stdefine.h
 	$(CC) $(CCFLAGS) -o $@ $< -c
@@ -40,10 +40,10 @@ $(DLL) : $(OBJS)
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
 %.exe : %.c $(DLL)
-	$(CC) $(CCFLAGS) -o $@ $< $(DLL) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lfaac
+	$(CC) $(CCFLAGS) -o $@ $< $(DLL) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264
 
 %.exe : %.cpp $(DLL)
-	$(CC) $(CCFLAGS) -o $@ $< $(DLL) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lfaac
+	$(CC) $(CCFLAGS) -o $@ $< $(DLL) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264
 
 clean :
 	-rm -f *.o
