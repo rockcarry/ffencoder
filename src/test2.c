@@ -1,10 +1,11 @@
 // 包含头文件
-#include "stdefine.h"
+#include <stdlib.h>
+#include <stdint.h>
 #include "ffencoder.h"
 
 static void rand_buf(void *buf, int size)
 {
-    DWORD *ptrdw = (DWORD*)buf;
+    uint32_t *ptrdw = (uint32_t*)buf;
     while (size) {
         *ptrdw++ = rand();
         size -= 4;
@@ -13,13 +14,13 @@ static void rand_buf(void *buf, int size)
 
 int main(void)
 {
-    void *encoder = NULL;
-    BYTE  abuf[1600 * 4     ];
-    BYTE  vbuf[256 * 240 * 4];
-    void *adata   [8] = { abuf };
-    void *vdata   [8] = { vbuf };
-    int   linesize[8] = { 256 * 4 };
-    int   i;
+    void    *encoder = NULL;
+    uint8_t  abuf[1600 * 4     ];
+    uint8_t  vbuf[256 * 240 * 4];
+    void    *adata   [8] = { abuf };
+    void    *vdata   [8] = { vbuf };
+    int      linesize[8] = { 256 * 4 };
+    int      i;
 
     encoder = ffencoder_init(NULL);
 

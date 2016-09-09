@@ -7,7 +7,6 @@
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
-#include "stdefine.h"
 #include "ffencoder.h"
 
 // 内部类型定义

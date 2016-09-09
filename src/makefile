@@ -6,7 +6,9 @@ FFMPEG_INC = ${PWD}/../ffmpeg_sdk_win32/include
 FFMPEG_LIB = ${PWD}/../ffmpeg_sdk_win32/lib
 
 # 编译器定义
-CC      = i686-w64-mingw32-gcc
+CROSS_COMPILE = i686-w64-mingw32-
+CC      = $(CROSS_COMPILE)gcc
+STRIP   = $(CROSS_COMPILE)strip
 CCFLAGS = -Wall -I$(FFMPEG_INC) -L$(FFMPEG_LIB)
 
 # 所有的目标文件
@@ -26,28 +28,32 @@ all : $(DLL) $(EXES)
 
 $(DLL) : $(OBJS)
 	$(CC) $(CCFLAGS) -static-libgcc -shared -o $@ $(OBJS) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lwsock32 -lws2_32
+	$(STRIP) $@
 
-%.o : %.c %.h stdefine.h
+%.o : %.c %.h
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
-%.o : %.cpp %.h stdefine.h
+%.o : %.cpp %.h
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
-%.o : %.c stdefine.h
+%.o : %.c
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
-%.o : %.cpp stdefine.h
+%.o : %.cpp
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
 %.exe : %.c $(DLL)
 	$(CC) $(CCFLAGS) -o $@ $< $(DLL)
+	$(STRIP) $@
 
 %.exe : %.cpp $(DLL)
 	$(CC) $(CCFLAGS) -o $@ $< $(DLL)
+	$(STRIP) $@
 
 install :
 	mkdir -p ${PWD}/../sdk
 	cp ffencoder.dll ${PWD}/../sdk
+	cp ffencoder.def ${PWD}/../sdk
 	cp ffencoder.h   ${PWD}/../sdk
 
 clean :
