@@ -526,9 +526,6 @@ int main(void)
     if (have_video) open_video(ctxt, vcodec, &vstream, opt);
     if (have_audio) open_audio(ctxt, acodec, &astream, opt);
 
-    /* dump format */
-    av_dump_format(ctxt, 0, filename, 1);
-
     /* open the output file, if needed */
     if (!(fmt->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ctxt->pb, filename, AVIO_FLAG_WRITE);

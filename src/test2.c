@@ -22,7 +22,7 @@ int main(void)
     int   i;
 
     encoder = ffencoder_init(NULL);
-    
+
     for (i=0; i<500; i++)
     {
         rand_buf(abuf, sizeof(abuf));

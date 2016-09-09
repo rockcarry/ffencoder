@@ -1,11 +1,11 @@
-prefix=/home/xujb/ffencoder/x264/../ffmpeg_sdk_win32
+prefix=/usr/local
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
 Name: x264
 Description: H.264 (MPEG4 AVC) encoder library
-Version: 0.148.2665 a01e339
+Version: 0.148.x
 Libs: -L${exec_prefix}/lib -lx264 
 Libs.private: 
 Cflags: -I${prefix}/include

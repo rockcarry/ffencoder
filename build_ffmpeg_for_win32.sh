@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+# using apt-get install yasm instead of compiling it
+if false; then
 #++ build yasm, ffmpeg need it
 if [ ! -d yasm-1.2.0 ]; then
 wget http://www.tortall.net/projects/yasm/releases/yasm-1.2.0.tar.gz
@@ -14,6 +16,7 @@ make install
 export PATH=$PATH:$PWD/../yasm-install/bin
 cd -
 #-- build yasm
+fi
 
 # speed of faac is slower than ffmpeg native aac encoder
 # so we do not use faac
@@ -25,10 +28,11 @@ tar xvf faac-1.28.tar.gz
 fi
 cd faac-1.28
 ./configure --prefix=$PWD/../ffmpeg_sdk_win32 \
---host=i586-mingw32msvc \
+--host=i686-w64-mingw32 \
 --enable-static \
 --enable-shared \
---without-mp4v2
+--without-mp4v2 \
+--extra-ldflags="-static-libgcc -static-libstdc++"
 make -j8 && make install
 cd -
 #-- build faac --#
@@ -42,9 +46,10 @@ cd x264
 ./configure --prefix=$PWD/../ffmpeg_sdk_win32 \
 --enable-strip \
 --enable-static \
---disable-shared \
---host=i586-mingw32msvc \
---cross-prefix=i586-mingw32msvc-
+--enable-shared \
+--host=i686-w64-mingw32 \
+--cross-prefix=i686-w64-mingw32- \
+--extra-ldflags="-static-libgcc -static-libstdc++"
 make -j8 && make install
 cd -
 #-- build x264 --#
@@ -59,14 +64,13 @@ sed -i '/check_cflags -Werror=missing-prototypes/d' ffmpeg/configure
 cd ffmpeg
 ./configure \
 --arch=x86 \
---cpu=i586 \
 --target-os=mingw32 \
 --enable-cross-compile \
---cross-prefix=i586-mingw32msvc- \
+--cross-prefix=i686-w64-mingw32- \
 --pkg-config=pkg-config \
 --prefix=$PWD/../ffmpeg_sdk_win32 \
 --enable-static \
---disable-shared \
+--enable-shared \
 --enable-small \
 --enable-memalign-hack \
 --disable-swscale-alpha \
@@ -78,17 +82,20 @@ cd ffmpeg
 --disable-avfilter \
 --disable-postproc \
 --disable-everything \
+--disable-iconv \
+--disable-schannel \
 --enable-encoder=libx264 \
 --enable-encoder=aac \
 --enable-muxer=mp4 \
 --enable-protocol=file \
+--enable-protocol=rtmp \
 --enable-asm \
 --enable-gpl \
 --enable-version3 \
 --enable-nonfree \
 --enable-libx264 \
 --extra-cflags="-I$PWD/../ffmpeg_sdk_win32/include" \
---extra-ldflags="-L$PWD/../ffmpeg_sdk_win32/lib"
+--extra-ldflags="-L$PWD/../ffmpeg_sdk_win32/lib -static-libgcc -static-libstdc++"
 make -j8 && make install
 cd -
 #++ build ffmpeg ++#
