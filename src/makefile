@@ -42,11 +42,11 @@ $(DLL) : $(OBJS)
 	$(CC) $(CCFLAGS) -o $@ $< -c
 
 %.exe : %.c $(DLL)
-	$(CC) $(CCFLAGS) -o $@ $< $(DLL)
+	$(CC) $(CCFLAGS) -static -o $@ $< $(DLL)
 	$(STRIP) $@
 
 %.exe : %.cpp $(DLL)
-	$(CC) $(CCFLAGS) -o $@ $< $(DLL)
+	$(CC) $(CCFLAGS) -static -o $@ $< $(DLL)
 	$(STRIP) $@
 
 install :

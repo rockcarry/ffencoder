@@ -87,6 +87,7 @@ cd ffmpeg
 --enable-encoder=libx264 \
 --enable-encoder=aac \
 --enable-muxer=mp4 \
+--enable-muxer=flv \
 --enable-protocol=file \
 --enable-protocol=rtmp \
 --enable-asm \

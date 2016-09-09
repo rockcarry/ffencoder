@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include "ffencoder.h"
@@ -592,12 +593,20 @@ void* ffencoder_init(FFENCODER_PARAMS *params)
     /* initialize libavcodec, and register all codecs and formats. */
     av_register_all();
 
+    // init network
+    avformat_network_init();
+
     /* allocate the output media context */
     avformat_alloc_output_context2(&encoder->ofctxt, NULL, NULL, params->out_filename);
     if (!encoder->ofctxt)
     {
         printf("could not deduce output format from file extension: using MPEG.\n");
         goto failed;
+    }
+
+    if (1) { // force using aac & h264 encoders
+        encoder->ofctxt->oformat->audio_codec = AV_CODEC_ID_AAC;
+        encoder->ofctxt->oformat->video_codec = AV_CODEC_ID_H264;
     }
 
     /* add the audio and video streams using the default format codecs
