@@ -17,8 +17,7 @@ OBJS = \
 
 # 所有的可执行目标
 EXES = \
-    test1.exe \
-    test2.exe \
+    test.exe \
 
 # 输出的库文件
 DLL = ffencoder.dll
@@ -27,7 +26,7 @@ DLL = ffencoder.dll
 all : $(DLL) $(EXES)
 
 $(DLL) : $(OBJS)
-	$(CC) $(CCFLAGS) -static-libgcc -shared -o $@ $(OBJS) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lwsock32 -lws2_32
+	$(CC) $(CCFLAGS) -static -shared -o $@ $(OBJS) -lavformat -lavcodec -lavutil -lswscale -lswresample -lx264 -lwsock32 -lws2_32 -lpthread
 	$(STRIP) $@
 
 %.o : %.c %.h

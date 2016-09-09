@@ -1,0 +1,6 @@
+EXPORTS
+
+ffencoder_init
+ffencoder_free
+ffencoder_audio
+ffencoder_video

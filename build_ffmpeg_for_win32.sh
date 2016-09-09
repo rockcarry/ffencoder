@@ -32,7 +32,7 @@ cd faac-1.28
 --enable-static \
 --enable-shared \
 --without-mp4v2 \
---extra-ldflags="-static-libgcc -static-libstdc++"
+--extra-ldflags="-static"
 make -j8 && make install
 cd -
 #-- build faac --#
@@ -49,7 +49,7 @@ cd x264
 --enable-shared \
 --host=i686-w64-mingw32 \
 --cross-prefix=i686-w64-mingw32- \
---extra-ldflags="-static-libgcc -static-libstdc++"
+--extra-ldflags="-static"
 make -j8 && make install
 cd -
 #-- build x264 --#
@@ -95,7 +95,7 @@ cd ffmpeg
 --enable-nonfree \
 --enable-libx264 \
 --extra-cflags="-I$PWD/../ffmpeg_sdk_win32/include" \
---extra-ldflags="-L$PWD/../ffmpeg_sdk_win32/lib -static-libgcc -static-libstdc++"
+--extra-ldflags="-L$PWD/../ffmpeg_sdk_win32/lib -static"
 make -j8 && make install
 cd -
 #++ build ffmpeg ++#
