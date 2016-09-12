@@ -27,7 +27,14 @@ void  ffencoder_free (void *ctxt);
 void  ffencoder_audio(void *ctxt, void *data[8], int nbsample   );
 void  ffencoder_video(void *ctxt, void *data[8], int linesize[8]);
 
++---------+
+ features
++---------+
+1. support multi-thread encoding
+2. auto drop frame when cpu could not encode in time
+3. support push rtmp live stream
+
 
 rockcarry
-2014-12-5
+2016-9-12
 
