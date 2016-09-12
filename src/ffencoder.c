@@ -684,6 +684,9 @@ void ffencoder_free(void *ctxt)
 
     // free encoder context
     free(encoder);
+
+    // deinit network
+    avformat_network_deinit();
 }
 
 int ffencoder_audio(void *ctxt, void *data[8], int nbsample)
