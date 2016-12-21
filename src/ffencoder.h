@@ -1,6 +1,9 @@
 #ifndef __FFENCODER_H_
 #define __FFENCODER_H_
 
+// 包含头文件
+#include <libavutil/frame.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,18 +31,17 @@ typedef struct
     int   out_video_frame_rate;
 
     // other params
-    int   start_apts;
-    int   start_vpts;
     int   scale_flags;
     int   audio_buffer_number;
     int   video_buffer_number;
+    int   video_timebase_type; // 1 - by frame rate, 0 - by ms
 } FFENCODER_PARAMS;
 
 // 函数声明
 void* ffencoder_init (FFENCODER_PARAMS *params);
 void  ffencoder_free (void *ctxt);
-int   ffencoder_audio(void *ctxt, void *data[8], int nbsample   );
-int   ffencoder_video(void *ctxt, void *data[8], int linesize[8]);
+int   ffencoder_audio(void *ctxt, void *data[AV_NUM_DATA_POINTERS], int nbsample, int pts);
+int   ffencoder_video(void *ctxt, void *data[AV_NUM_DATA_POINTERS], int linesize[AV_NUM_DATA_POINTERS], int pts);
 
 #ifdef __cplusplus
 }

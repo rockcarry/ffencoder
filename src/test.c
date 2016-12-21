@@ -62,11 +62,10 @@ int main(void)
         25,                        // out_video_frame_rate
 
         // other params
-        0,                         // start_apts
-        0,                         // start_vpts
         SWS_POINT,                 // scale_flags
         5,                         // audio_buffer_number
         5,                         // video_buffer_number
+        1,                         // timebase by frame rate
     };
 
     // init vars
@@ -80,7 +79,7 @@ int main(void)
     {
         rand_buf(abuf, sizeof(abuf));
         for (j=0; j<ENCODE_MAX_RETRY; j++) {
-            if (0 == ffencoder_audio(encoder, adata, 44100/30)) {
+            if (0 == ffencoder_audio(encoder, adata, 44100/30, -1)) {
                 break;
             }
             usleep(20*1000);
@@ -91,7 +90,7 @@ int main(void)
 
         rand_buf(vbuf, sizeof(vbuf));
         for (j=0; j<ENCODE_MAX_RETRY; j++) {
-            if (0 == ffencoder_video(encoder, vdata, linesize)) {
+            if (0 == ffencoder_video(encoder, vdata, linesize, -1)) {
                 break;
             }
             usleep(20*1000);
