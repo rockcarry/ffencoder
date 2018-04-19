@@ -1,3 +1,15 @@
+!!!!!!!!!!!!!!!!!!!!
+! important notice !
+!!!!!!!!!!!!!!!!!!!!
+
+this project is stop maintained and its source code is out of date.
+the lastest ffencode source code is keeping maintain in v4l2test project.
+
+please refer to v4l2test project:
+https://github.com/rockcarry/v4l2test
+
+
+
 +-------------+
  instroduction
 +-------------+
